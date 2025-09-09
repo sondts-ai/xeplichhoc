@@ -33,19 +33,63 @@ def random_schedule(subjects):
 
 def evaluate(schedule):
     score = 0
-    used_slots = [s for s, lst in schedule.items() if lst]
-    score += len(used_slots) * 10
 
-    day_count = {d: 0 for d in days}
-    for (d, _), lst in schedule.items():
+    # --- Thống kê cơ bản ---
+    day_count = {d: 0 for d in days}   # số buổi mỗi ngày
+    ca_count = {c: 0 for c in cas}     # số buổi mỗi ca
+    subj_days = {}                     # lưu ngày học của từng môn
+
+    for (d, c), lst in schedule.items():
         day_count[d] += len(lst)
+        ca_count[c] += len(lst)
+        for name in lst:
+            subj = name.split(" ")[0]   # tách tên môn, bỏ "(i)"
+            subj_days.setdefault(subj, []).append(d)
 
+    # --- 1. Mỗi ngày có ít nhất 1 buổi ---
     for d in days:
-        if day_count[d] == 0:
-            score -= 5
+        if day_count[d] > 0:
+            score += 10
+        else:
+            score -= 10
+
+    # --- 2. Phạt nếu ngày có quá nhiều buổi (>4 ca) ---
+    for d in days:
         if day_count[d] > 4:
-            score -= 5
+            score -= (day_count[d] - 4) * 5
+
+    # --- 3. Cân bằng số buổi giữa các ca ---
+    avg = sum(ca_count.values()) / len(cas)
+    variance = sum((c - avg) ** 2 for c in ca_count.values())
+    score -= variance * 0.5   # hệ số phạt lệch ca
+
+    # --- 4. Tránh dồn nhiều môn vào cùng 1 slot ---
+    for (d, c), lst in schedule.items():
+        if len(lst) > 1:
+            score -= (len(lst) - 1) * 3
+
+    # --- 5. Trải đều buổi học của cùng một môn ---
+    for subj, ds in subj_days.items():
+        unique_days = len(set(ds))
+        if unique_days < len(ds):  # có buổi dồn vào cùng ngày
+            score -= (len(ds) - unique_days) * 5
+
+    # --- 6. Tránh học cùng môn 2 ngày liên tiếp ---
+    day_index = {d: i for i, d in enumerate(days)}
+    for subj, ds in subj_days.items():
+        idxs = sorted(day_index[d] for d in ds)
+        for i in range(1, len(idxs)):
+            if idxs[i] - idxs[i-1] == 1:
+                score -= 2   # học 2 ngày liền kề
+
+    # --- 7. Phạt ngày học kín cả 4 ca ---
+    for d in days:
+        if day_count[d] == len(cas):
+            score -= 8
+
     return score
+
+
 
 def build_subj_to_slot(schedule):
     m = {}
@@ -262,4 +306,3 @@ if __name__ == "__main__":
     window = ScheduleApp()
     window.show()
     sys.exit(app.exec_())
-
