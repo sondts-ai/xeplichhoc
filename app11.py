@@ -11,12 +11,8 @@ from PyQt5.QtCore import Qt
 # ==========================
 days = ["T2", "T3", "T4", "T5", "T6", "T7"]
 cas = ["Ca 1", "Ca 2", "Ca 3", "Ca 4"]   # 4 ca
+MAX_SLOTS = len(days) * len(cas)  # 24 slot
 
-def init_empty_schedule():
-    """Trả về dict với tất cả slot có list rỗng: (day,ca) -> []"""
-    return {(d, c) for d in days for c in cas}
-
-# ==========================
 def expand_subjects(subjects):
     """Biến (môn, số buổi) thành danh sách (tên_buổi, ca_random)"""
     expanded = []
@@ -110,7 +106,7 @@ class ScheduleApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("📅 Tối ưu Lịch Học - Không chọn ca")
-        self.setGeometry(200, 200, 1000, 520)
+        self.setGeometry(200, 200, 1000, 540)
 
         self.subjects = []
 
@@ -152,6 +148,9 @@ class ScheduleApp(QMainWindow):
         self.clear_button = QPushButton("🗑️ Xóa tất cả", self)
         self.clear_button.clicked.connect(self.clear_all)
 
+        # Thanh trạng thái hiển thị số buổi
+        self.status_label = QLabel(f"Số buổi hiện tại: 0 / {MAX_SLOTS}")
+
         h_sub_layout = QHBoxLayout()
         h_sub_layout.addWidget(self.subject_input)
         h_sub_layout.addWidget(QLabel("Số buổi:"))
@@ -174,6 +173,7 @@ class ScheduleApp(QMainWindow):
         layout.addLayout(h_sub_layout)
         layout.addWidget(QLabel("Danh sách môn học đã nhập:"))
         layout.addWidget(self.subject_list)
+        layout.addWidget(self.status_label)
         layout.addLayout(h_layout)
         layout.addWidget(self.table)
         layout.addLayout(h_button_layout)
@@ -182,15 +182,38 @@ class ScheduleApp(QMainWindow):
         container.setLayout(layout)
         self.setCentralWidget(container)
 
+    def update_status(self):
+        total_sessions = sum(c for _, c in self.subjects)
+        self.status_label.setText(f"Số buổi hiện tại: {total_sessions} / {MAX_SLOTS}")
+
     def add_subject(self):
         subject = self.subject_input.text().strip()
         count = self.count_input.value()
 
-        if subject:
-            self.subjects.append((subject, count))
-            self.subject_list.addItem(f"{subject} - {count} buổi")
-            self.subject_input.clear()
-            self.count_input.setValue(1)
+        if not subject:
+            return
+
+        total_sessions = sum(c for _, c in self.subjects)
+
+        if total_sessions + count > MAX_SLOTS:
+            QMessageBox.warning(
+                self, "⚠️ Quá tải",
+                f"Tổng số buổi ({total_sessions + count}) vượt quá số slot ({MAX_SLOTS})."
+            )
+            return
+
+        if total_sessions + count == MAX_SLOTS:
+            QMessageBox.information(
+                self, "✅ Đủ buổi",
+                "Bạn đã nhập vừa đủ số buổi cho cả tuần (full lịch)."
+            )
+
+        self.subjects.append((subject, count))
+        self.subject_list.addItem(f"{subject} - {count} buổi")
+        self.subject_input.clear()
+        self.count_input.setValue(1)
+
+        self.update_status()
 
     def clear_all(self):
         reply = QMessageBox.question(self, "Xác nhận", "Bạn có chắc muốn xóa tất cả môn và lịch?",
@@ -200,6 +223,7 @@ class ScheduleApp(QMainWindow):
             self.subject_list.clear()
             self.table.clearContents()
             self.label.setText("Nhập môn học + số buổi, sau đó nhấn nút để sinh lịch")
+            self.update_status()
 
     def generate_schedule(self):
         if not self.subjects:
@@ -238,3 +262,4 @@ if __name__ == "__main__":
     window = ScheduleApp()
     window.show()
     sys.exit(app.exec_())
+

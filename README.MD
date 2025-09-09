@@ -27,8 +27,9 @@
 
 ```
 ScheduleApp/
-│-- schedule_app.py   # Code chính của ứng dụng
-│-- README.md         # Hướng dẫn sử dụng
+│-- app11.py # Code chính của ứng dụng
+│-- requirements.txt # Thư viện cần cài
+│-- README.md # Hướng dẫn sử dụng
 ```
 
 ---
@@ -38,13 +39,13 @@ ScheduleApp/
 1. Cài đặt thư viện cần thiết:
 
    ```bash
-   pip install PyQt5
+    pip install -r requirements.txt
    ```
 
 2. Chạy ứng dụng:
 
    ```bash
-   python schedule_app.py
+   python app11.py
    ```
 
 3. Giao diện sẽ hiện ra:
